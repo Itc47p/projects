@@ -178,16 +178,9 @@ const createManifestHtml = (state) => {
     }
     // Generate HTML for each rover
     const roverHtml = rovers.map(rover => {
-        return `
-            <div align="center">
-                <h2>${rover.name}</h2>
-                <p>Launch Date: ${rover.launch_date}</p>
-                <p>Landing Date: ${rover.landing_date}</p>
-                <p>Status: ${rover.status}</p>
-            </div>
-        `;
+        return displayRoverManifest(rover);
     }
-    ).join('');
+    
     // Combine rover HTML into a single string
 
     return `
@@ -199,10 +192,12 @@ const createManifestHtml = (state) => {
                 The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
                 images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
             </p>
-            <p>Click on a rover to view its manifest</p>
-            <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
-            <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
-            <button id="spirit-manifest" onclick="displayRoverManifest('spirit')">Spirit</button>
+            <div id="rover-manifest-data">
+                <p>Click on a rover to view its manifest</p>
+                <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
+                <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
+                <button id="spirit-manifest" onclick="displayRoverManifest('spirit')">Spirit</button>
+            </div>
         </div>
     </section>
 `;
