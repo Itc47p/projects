@@ -13,7 +13,7 @@ const updateStore = (store, newState) => {
 }
 
 const render = async (root, state) => {
-    root.innerHTML = App(state)
+    root.innerHTML = await App(state)
 }
 
 const Greeting = (name) => {
@@ -156,83 +156,93 @@ const getRoverPhotos = (rover) => {
 
 // ------------------------------------------------------  High Order Functions
 
-// function createManifestHTML(tag, attributes, ...children) {
-//     const element = document.createElement(tag);
-//     for (let key in attributes) {
-//         element.setAttribute(key, attributes[key]);
-//     }
-//     children.forEach(child => {
-//         if (typeof child === 'string') {
-//             element.appendChild(document.createTextNode(child));
-//         } else {
-//             element.appendChild(child);
-//         }
-//     });
-//     return element;
-// }
-
-const createManifestHtml = (state) => {
-    let { rovers } = store;
-    if (!rovers || rovers.length === 0) {
-        return '<p>No rovers available.</p>';
+// Define the createHTMLElement function
+function createHTMLElement(tag, attributes, ...children) {
+    const element = document.createElement(tag);
+    for (let key in attributes) {
+        element.setAttribute(key, attributes[key]);
     }
-    // Generate HTML for each rover
-    const roverHtml = rovers.map(rover => {
-        return displayRoverManifest(rover);
-    }
-    
-    // Combine rover HTML into a single string
-
-    return `
-    <section id="Manifest">
-        <div align="center">
-            <h3 class="title">Mars Rover Manifest</h3>
-            <p>View each rover's manifest</p>
-            <p>
-                The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
-                images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
-            </p>
-            <div id="rover-manifest-data">
-                <p>Click on a rover to view its manifest</p>
-                <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
-                <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
-                <button id="spirit-manifest" onclick="displayRoverManifest('spirit')">Spirit</button>
-            </div>
-        </div>
-    </section>
-`;
-};
-
-
-function displayRoverManifest(roverName) {
-    getRoverManifest(roverName).then(data => {
-        const manifestData = data.photo_manifest;
-        const manifestElement = createHTMLElement('div', { class: 'rover-manifest' },
-            createHTMLElement('h2', {}, `Rover: ${manifestData.name}`),
-            createHTMLElement('p', {}, `Landing Date: ${manifestData.landing_date}`),
-            createHTMLElement('p', {}, `Launch Date: ${manifestData.launch_date}`),
-            createHTMLElement('p', {}, `Status: ${manifestData.status}`),
-            createHTMLElement('p', {}, `Total Photos: ${manifestData.total_photos}`)
-        );
-        const manifestContainer = document.getElementById('rover-manifest-data');
-        manifestContainer.innerHTML = '';
-        manifestContainer.appendChild(manifestElement);
+    children.forEach(child => {
+        if (typeof child === 'string') {
+            element.appendChild(document.createTextNode(child));
+        } else {
+            element.appendChild(child);
+        }
     });
+    return element;
 }
-function displayRoverPhotos(roverName) {
-    getRoverPhotos(roverName).then(data => {
-        const photos = data.photos;
-        const photoElements = photos.map(photo => createHTMLElement('img', { src: photo.img_src, alt: 'Rover Photo', class: 'rover-photo' }));
-        const photosContainer = document.getElementById('rover-photos');
-        photosContainer.innerHTML = '';
-        photoElements.forEach(photoElement => {
-            photosContainer.appendChild(photoElement);
-        });
+
+// const createManifestHtml = async (state) => {
+//     let { rovers } = store;
+//     if (!rovers || rovers.length === 0) {
+//         return '<p>No rovers available.</p>';
+//     }
+//     // Generate HTML for each rover
+//     const roverHtmlPromises = rovers.map(async rover => {
+//         return await displayRoverManifest(rover);
+//     });
+
+//     // Wait for all promises to resolve
+//     const roverHtml = await Promise.all(roverHtmlPromises);
+
+//     // Combine rover HTML into a single string
+//     return (`
+//         <section id="Manifest">
+//             <div align="center">
+//                 <h3 class="title">Mars Rover Manifest</h3>
+//                 <p>View each rover's manifest</p>
+//                 <p>
+//                     The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
+//                     images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
+//                 </p>
+//                 <div id="rover-manifest-data">
+//                     <p>Click on a rover to view its manifest</p>
+//                     <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
+//                     <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
+//                     <button id="spirit-manifest" onclick="displayRoverManifest('spirit')">Spirit</button>
+//                 </div>
+//             </div>
+//         </section>
+//     `);
+// };
+
+async function displayRoverManifest(roverName) {
+    try {
+        const response = await fetch(`/manifests/${roverName}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+    } catch (err) {
+        console.error('Error fetching rover manifest:', err);
+        return null
+    }
+    const manifestData = data.photo_manifest;
+    const manifestElement = createHTMLElement('div', { class: 'rover-manifest-data' },
+        createHTMLElement('h2', {}, `Rover: ${manifestData.name}`),
+        createHTMLElement('p', {}, `Landing Date: ${manifestData.landing_date}`),
+        createHTMLElement('p', {}, `Launch Date: ${manifestData.launch_date}`),
+        createHTMLElement('p', {}, `Status: ${manifestData.status}`),
+        createHTMLElement('p', {}, `Total Photos: ${manifestData.total_photos}`)
+    );
+    const manifestContainer = document.getElementById('rover-manifest-data');
+    manifestContainer.innerHTML = '';
+    manifestContainer.appendChild(manifestElement);
+}
+
+async function displayRoverPhotos(roverName) {
+    const data = await getRoverPhotos(roverName);
+    const photos = data.photos;
+    const photoElements = photos.map(photo => createHTMLElement('img', { src: photo.img_src, alt: 'Rover Photo', class: 'rover-photo' }));
+    const photosContainer = document.getElementById('rover-photos');
+    photosContainer.innerHTML = '';
+    photoElements.forEach(photoElement => {
+        photosContainer.appendChild(photoElement);
     });
 }
 
 // create content
-const App = (state) => {
+const App = async (state) => {
     let { rovers, apod } = state;
 
     return `
@@ -252,9 +262,24 @@ const App = (state) => {
                 </p>
                 ${ImageOfTheDay(apod)}
             </section>
-            
-            ${createManifestHtml(rovers)}
 
+            <section id="Manifest">
+                <div align="center">
+                    <h3 class="title">Mars Rover Manifest</h3>
+                    <p>View each rover's manifest</p>
+                    <p>
+                        The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
+                        images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
+                    </p>
+                    <div id="rover-manifest-data">
+                        <p>Click on a rover to view its manifest</p>
+                        <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
+                        <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
+                        <button id="spirit-manifest" onclick="displayRoverManifest('Spirit')">Opportunity</button>
+                    </div>
+                </div>
+            </section>
+            
             <section id="photos">
                 <div id="rover-photos" align="center">
                      <h3 class="title">Mars Rover Photos</h3>
@@ -274,36 +299,27 @@ const App = (state) => {
     `;
 };
 
-
 // ------------------------------------------------------  EVENT LISTENERS
 window.addEventListener('load', () => {
     render(root, store)
 })
-// Event listener for rover manifest buttons
-document.getElementById('curiosity-manifest').addEventListener('click', () => {
-    getRoverManifest('curiosity')
-})
-document.getElementById('opportunity-manifest').addEventListener('click', () => {
-    getRoverManifest('opportunity')
-})
-document.getElementById('opportunity-manifest').addEventListener('click', () => {
-    getRoverManifest('spirit')
-})
-// Event listeners for rover photos buttons
-document.getElementById('curiosity-photos').addEventListener('click', () => {
-    getRoverPhotos('curiosity')
-})
-document.getElementById('opportunity-photos').addEventListener('click', () => {
-    getRoverPhotos('opportunity')
-})
-document.getElementById('spirit-photos').addEventListener('click', () => {
-    getRoverPhotos('spirit')
-})
+
 // Event listener for APOD
-document.getElementById('apod').add
-EventListener('click', () => {
+document.getElementById('apod').addEventListener('click', () => {
     getImageOfTheDay(store)
 })
+// Event listener for manifest
+document.getElementById('curisoity-manifest').addEventListener('click', () => {
+    createManifestHtml(store)
+})
+document.getElementById('opportunity-manifest').addEventListener('click', () => {
+    createManifestHtml(store)
+})
+document.getElementById('spirit-manifest').addEventListener('click', () => {
+    createManifestHtml(store)
+})
+// Event listener for photos
+
 
 document.addEventListener('DOMContentLoaded', () => {
     fetch('/apod')
