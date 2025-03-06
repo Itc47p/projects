@@ -213,21 +213,24 @@ async function displayRoverManifest(roverName) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log('Manifest data:', data);
+
+        const { rover, landing_date, launch_date, status, photos } = data;
+
+        const manifestElement = createHTMLElement('div', { class: 'rover-manifest-data' },
+            createHTMLElement('h2', {}, `Rover: ${rover}`),
+            createHTMLElement('p', {}, `Landing Date: ${landing_date}`),
+            createHTMLElement('p', {}, `Launch Date: ${launch_date}`),
+            createHTMLElement('p', {}, `Status: ${status}`),
+            createHTMLElement('p', {}, `Total Photos: ${photos.length}`)
+        );
+
+        const manifestContainer = document.getElementById('rover-manifest-data');
+        manifestContainer.innerHTML = '';
+        manifestContainer.appendChild(manifestElement);
     } catch (err) {
         console.error('Error fetching rover manifest:', err);
-        return null
     }
-    const manifestData = data.photo_manifest;
-    const manifestElement = createHTMLElement('div', { class: 'rover-manifest-data' },
-        createHTMLElement('h2', {}, `Rover: ${manifestData.name}`),
-        createHTMLElement('p', {}, `Landing Date: ${manifestData.landing_date}`),
-        createHTMLElement('p', {}, `Launch Date: ${manifestData.launch_date}`),
-        createHTMLElement('p', {}, `Status: ${manifestData.status}`),
-        createHTMLElement('p', {}, `Total Photos: ${manifestData.total_photos}`)
-    );
-    const manifestContainer = document.getElementById('rover-manifest-data');
-    manifestContainer.innerHTML = '';
-    manifestContainer.appendChild(manifestElement);
 }
 
 async function displayRoverPhotos(roverName) {
@@ -263,7 +266,7 @@ const App = async (state) => {
                 ${ImageOfTheDay(apod)}
             </section>
 
-            <section id="Manifest">
+                        <section id="Manifest">
                 <div align="center">
                     <h3 class="title">Mars Rover Manifest</h3>
                     <p>View each rover's manifest</p>
@@ -271,12 +274,13 @@ const App = async (state) => {
                         The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
                         images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
                     </p>
-                    <div id="rover-manifest-data">
+                    <div id="rover-buttons">
                         <p>Click on a rover to view its manifest</p>
                         <button id="curiosity-manifest" onclick="displayRoverManifest('curiosity')">Curiosity</button>
                         <button id="opportunity-manifest" onclick="displayRoverManifest('opportunity')">Opportunity</button>
-                        <button id="spirit-manifest" onclick="displayRoverManifest('Spirit')">Opportunity</button>
+                        <button id="spirit-manifest" onclick="displayRoverManifest('spirit')">Spirit</button>
                     </div>
+                    <div id="rover-manifest-data"></div>
                 </div>
             </section>
             
