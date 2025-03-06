@@ -27,6 +27,17 @@ footer {
   text-align: center;
 }
 
+.rover-manifest-table {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+.rover-manifest-table th,
+.rover-manifest-table td {
+    border: 1px solid black;
+    padding: 8px;
+}
+
 /* -------------------  TABLET  --------------------- */
 @media (min-width: 768px) {
   /* use mobile */
