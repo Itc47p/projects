@@ -234,15 +234,37 @@ async function displayRoverManifest(roverName) {
 }
 
 async function displayRoverPhotos(roverName) {
-    const data = await getRoverPhotos(roverName);
-    const photos = data.photos;
-    const photoElements = photos.map(photo => createHTMLElement('img', { src: photo.img_src, alt: 'Rover Photo', class: 'rover-photo' }));
-    const photosContainer = document.getElementById('rover-photos');
-    photosContainer.innerHTML = '';
-    photoElements.forEach(photoElement => {
-        photosContainer.appendChild(photoElement);
-    });
+    try {
+        const response = await fetch(`/mars-photos/rover/${roverName}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Rover photos:', data);
+
+        const photosElement = createHTMLElement('div', { class: 'rover-photos' },
+            createHTMLElement('h2', {}, `Rover: ${roverName}`),
+            createHTMLElement('p', {}, `Total Photos: ${data.photos.length}`)
+        );
+
+    } catch (err) {
+        console.error('Error fetching rover photos:', err);
+    }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/apod')
+        .then(res => res.json())
+        .then(data => {
+            if (data.image && !data.image.error) {
+                updateStore(store, { apod: data.image });
+            } else {
+                console.error('Error fetching APOD:', data.image.error);
+            }
+        })
+        .catch(err => console.log('error:', err));
+});
+  
 
 // create content
 const App = async (state) => {
@@ -323,17 +345,3 @@ document.getElementById('spirit-manifest').addEventListener('click', () => {
     createManifestHtml(store)
 })
 // Event listener for photos
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    fetch('/apod')
-        .then(res => res.json())
-        .then(data => {
-            if (data.image && !data.image.error) {
-                updateStore(store, { apod: data.image });
-            } else {
-                console.error('Error fetching APOD:', data.image.error);
-            }
-        })
-        .catch(err => console.log('error:', err));
-});
