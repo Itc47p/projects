@@ -1,76 +1,179 @@
-//TODO: Use Immutable js on data that should not be modified
-
-let store = Immutable.Map({
-    user: Immutable.Map({ name: "Chris" }),
+let store = {
+    user: { name: "Chris" },
     apod: '',
-    rovers: Immutable.List(['Curiosity', 'Opportunity', 'Spirit']),
-    selectedRover: 'none'
-})
+    rovers: ['Curiosity', 'Opportunity', 'Spirit'],
+}
 
 // add our markup to the page
 const root = document.getElementById('root')
 
-const updateStore = (state, newState) => {
-    store = store.merge(newState)
-    console.log('store:', store)
-    render(root, store)
+const updateStore = (store, newState) => {
+    store = { ...store, ...newState };
+    render(root, store);
 }
 
 const render = async (root, state) => {
     root.innerHTML = App(state)
 }
 
-const App = (state) => {
-    let { rovers, apod } = state;
+const Greeting = (name) => {
+    if (name) {
+        return `
+            <h1>Welcome, ${name}!</h1>
+        `
+    }
 
     return `
-        <header></header>
-        <main>
-            ${Greeting(store.user.name)}
-            <section>
-                <h3 class="title">Mars Rover Dashboard</h3>
-                <p>Here is an example section.</p>
-                <p>
-                    One of the most popular websites at NASA is the Astronomy Picture of the Day. In fact, this website is one of
-                    the most popular websites across all federal agencies. It has the popular appeal of a Justin Bieber video.
-                    This endpoint structures the APOD imagery and associated metadata so that it can be repurposed for other
-                    applications. In addition, if the concept_tags parameter is set to True, then keywords derived from the image
-                    explanation are returned. These keywords could be used as auto-generated hashtags for twitter or instagram feeds;
-                    but generally help with discoverability of relevant imagery.
-                </p>
-                ${ImageOfTheDay(apod)}
-            </section>
-        </main>
-        <footer>
-        </footer>
+        <h1>Hello!</h1>
+    `
+}
+
+// # region Pure functions
+// Example of a pure function that renders infomation requested from the backend
+const ImageOfTheDay = (apod) => {
+
+    //If image does not already exist, or it is not from today -- request it again
+    const today = new Date()
+    const photodate = new Date(apod.date)
+
+    if (!apod || apod.date === today) {
+        getImageOfTheDay(store)
+    }
+
+    // check if the photo of the day is actually type video!
+    if (apod.media_type === "video") {
+        return (`
+            <p>See today's featured video <a href="${apod.url}">here</a></p>
+            <p>${apod.title}</p>
+            <p>${apod.explanation}</p>
+        `)
+    } else {
+        return (`
+            <img src="${apod.image.url}" height="350px" width="100%" />
+            <p>${apod.image.explanation}</p>
+        `)
+    }
+}
+
+const Manifest = async (roverName) => {
+    const rover = await getRoverManifest(roverName);
+    if (!rover) {
+        return '<p>Error fetching rover manifest data.</p>';
+    }
+    console.log('Generating HTML for rover:', rover);
+    return `
+        <h1>${rover.name}</h1>
+        <p>Launch Date: ${rover.launch_date}</p>
+        <p>Landing Date: ${rover.landing_date}</p>
+        <p>Status: ${rover.status}</p>
     `;
+}
+
+// ------------------------------------------------------  API CALLS
+const getImageOfTheDay = (state) => {
+    let { apod } = state
+    fetch(`/apod`)
+        .then(res => res.text())
+        .then(text => {
+            return JSON.parse(text);
+        })
+        .then(apod => updateStore(store, { apod }))
+        .catch(err => console.log('error:', err));
+
+    return apod
+}
+
+const getRoverManifest = (rover) => {
+
+    if (typeof rover !== 'string') {
+        throw new Error('Invalid rover name. Expected a string.');
+    }
+    // is the chosen rover is already in the store?
+    if (store.rovers[rover]) {
+        updateStore(store, { rover });
+        return Promise.resolve(store.rovers[rover]);
+    }
+
+    return fetch(`/manifests/${rover}`)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return res.json();
+            } else {
+                return res.text().then(text => {
+                    throw new Error(`Expected JSON, got: ${text}`);
+                });
+            }
+        })
+        .then(data => {
+            console.log('Manifest data:', data);
+            store.rovers[rover] = data;
+            updateStore(store, { rover });
+            return data;
+        })
+        .catch(err => {
+            console.error('Error fetching rover manifest:', err);
+            return null;
+        });
 };
 
-window.addEventListener('load', () => {
-    // Render the initial state of the app
-    render(root, store)
-    // Fetch the APOD data on load
-    getImageOfTheDay(store)
-})
+const getRoverPhotos = (rover) => {
 
-const createContainer = (state) => {
-    return `<ul class="rover-container">${createContainerState(state)}</ul>`
-}
+    if (typeof rover !== 'string') {
+        throw new Error('Invalid rover name. Expected a string.');
+    }
+    // is the chosen rover's photos already in the store?
+    if (store.rovers[rover] && store.rovers[rover].photos) {
+        updateStore(store, { selectedRover: store.rovers[rover].photos });
+        return Promise.resolve(store.rovers[rover].photos);
+    }
 
-const createContainerState = (state) => {
-    return Array.from(state.get('rovers')).map(rover => 
-        `<li id=${rover} class="rover" onclick="clickHandler(event)">
-            <a href="#">${rover}</a>
-        </li>`
-    ).join('')
-}
+    return fetch(`/rovers/${rover}`)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return res.json();
+            } else {
+                return res.text().then(text => {
+                    throw new Error(`Expected JSON, got: ${text}`);
+                });
+            }
+        })
+        .then(data => {
+            console.log('Rover photos data:', data);
+            if (!store.rovers[rover]) {
+                store.rovers[rover] = {};
+            }
+            store.rovers[rover].photos = data;
+            updateStore(store, { selectedRover: data });
+            return data;
+        })
+        .catch(err => {
+            console.error('Error fetching rover photos:', err);
+            return null;
+        });
+};
 
-const renderRoverContainer = (state) => {
-    return Array.from(state.get('rovers')).map(rover => 
-        `<li id=${rover} class="rover" onclick="clickHandler(event)">
-            <a href="#">${rover}</a>
-        </li>`
-    ).join('')
+function displayRoverManifest(roverName) {
+    getRoverManifest(roverName).then(data => {
+        const manifestData = data.photo_manifest;
+        const manifestElement = createHTMLElement('div', { class: 'rover-manifest' },
+            createHTMLElement('h2', {}, `Rover: ${manifestData.name}`),
+            createHTMLElement('p', {}, `Landing Date: ${manifestData.landing_date}`),
+            createHTMLElement('p', {}, `Launch Date: ${manifestData.launch_date}`),
+            createHTMLElement('p', {}, `Status: ${manifestData.status}`),
+            createHTMLElement('p', {}, `Total Photos: ${manifestData.total_photos}`)
+        );
+        const manifestContainer = document.getElementById('rover-manifest-data');
+        manifestContainer.innerHTML = '';
+        manifestContainer.appendChild(manifestElement);
+    });
 }
 
 const roverImages = (state) => {
@@ -94,57 +197,71 @@ const roverImages = (state) => {
     ).slice(0, 50).join('')
 }
 
-// # region Pure functions
-// Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (apod) => {
-    // If image does not already exist, or it is not from today -- request it again
-    const today = new Date()
-    const photodate = new Date(apod.date)
+// create content
+const App = (state) => {
+    let { rovers, apod } = state;
 
-    if (!apod || apod.date === today) {
-        getImageOfTheDay(store)
-    }
-
-    // check if the photo of the day is actually type video!
-    if (apod.media_type === "video") {
-        return (`
-            <p>See today's featured video <a href="${apod.url}">here</a></p>
-            <p>${apod.title}</p>
-            <p>${apod.explanation}</p>
-        `)
-    } else {
-        return (`
-            <img src="${apod.image.url}" height="350px" width="100%" />
-            <p>${apod.image.explanation}</p>
-        `)
-    }
-}
-
-// ------------------------------------------------------  API CALLS
-const getImageOfTheDay = (state) => {
-    let { apod } = state
-    fetch(`/apod`)
-        .then(res => res.text())
-        .then(text => {
-            return JSON.parse(text);
-        })
-        .then(apod => updateStore(store, { apod }))
-        .catch(err => console.log('error:', err));
-
-    return apod
-}
-
-const getRoverData = async (rover) => {
-    try {
-        let response = await fetch(`/rovers/${rover}`);
-        let data = await response.json();
-        updateStore(store, { selectedRover: data });
-    } catch (err) {
-        console.log('error:', err);
-    }
+    return `
+        <header></header>
+        <main>
+            ${Greeting(store.user.name)}
+            <section>
+                <h3 class="title">Mars Rover Dashboard</h3>
+                <p>Here is an example section.</p>
+                <p>
+                    One of the most popular websites at NASA is the Astronomy Picture of the Day. In fact, this website is one of
+                    the most popular websites across all federal agencies. It has the popular appeal of a Justin Bieber video.
+                    This endpoint structures the APOD imagery and associated metadata so that it can be repurposed for other
+                    applications. In addition, if the concept_tags parameter is set to True, then keywords derived from the image
+                    explanation are returned. These keywords could be used as auto-generated hashtags for twitter or instagram feeds;
+                    but generally help with discoverability of relevant imagery.
+                </p>
+                ${ImageOfTheDay(apod)}
+            </section>
+            
+            <section id="photos">
+                <div id="rover-photos" align="center">
+                     <h3 class="title">Mars Rover Photos</h3>
+                    <p>View each rover's photos by clicking on them.</p>
+                    <p>
+                        The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
+                        images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
+                    </p>
+                    <button id="curiosity-photos" onclick="getRoverPhotos('curiosity')">Curiosity</button>
+                    <button id="opportunity-photos" onclick="getRoverPhotos('opportunity')">Opportunity</button>
+                    <button id="spirit-photos" onclick="getRoverPhotos('spirit')">Spirit</button>
+                </div>
+            </section>
+        </main>
+        <footer>
+        </footer>
+    `;
 };
 
+
 // ------------------------------------------------------  EVENT LISTENERS
+window.addEventListener('load', () => {
+    render(root, store)
+})
+document.getElementById('curiosity-manifest').addEventListener('click', () => {
+    getRoverManifest('curiosity')
+})
+document.getElementById('opportunity-manifest').addEventListener('click', () => {
+    getRoverManifest('opportunity')
+})
+document.getElementById('spirit-manifest').addEventListener('click', () => {
+    getRoverManifest('spirit')
+})
+// Event listeners for rover photos buttons
+document.getElementById('curiosity-photos').addEventListener('click', () => {
+    getRoverPhotos('curiosity')
+})
+document.getElementById('opportunity-photos').addEventListener('click', () => {
+    getRoverPhotos('opportunity')
+})
+document.getElementById('spirit-photos').addEventListener('click', () => {
+    getRoverPhotos('spirit')
+})
 // Event listener for APOD
 document.getElementById('apod').addEventListener('click', () => {
     getImageOfTheDay(store)
@@ -161,4 +278,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         .catch(err => console.log('error:', err));
-})
+});
