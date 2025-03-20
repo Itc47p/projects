@@ -59,10 +59,9 @@ const RoverInfo = (roverData) => {
     if (!roverData || !roverData.img_src || !roverData.rover) {
         return `<p>No data available for the selected rover.</p>`;
     }
-
     const { img_src, rover } = roverData;
 
-    return `
+    return (`
         <div class="rover-info-container">
             <div class="rover-photo">
                 <img src="${img_src}" alt="Rover Photo" />
@@ -74,13 +73,13 @@ const RoverInfo = (roverData) => {
                 <p><strong>Status:</strong> ${rover.status}</p>
             </div>
         </div>
-    `;
+    `);
 }
 
 // ------------------------------------------------------  API CALLS
 const getImageOfTheDay = (state) => {
     let { apod } = state
-    fetch(`/apod`)
+    fetch(`/apod`)x
         .then(res => res.text())
         .then(text => {
             return JSON.parse(text);
@@ -92,13 +91,12 @@ const getImageOfTheDay = (state) => {
 }
 
 const getRoverInformation = (rover) => {
-
     if (typeof rover !== 'string') {
         throw new Error('Invalid rover name. Expected a string.');
     }
-    // is the chosen rover's photos already in the store?
     if (store.rovers[rover] && store.rovers[rover].photos) {
         updateStore(store, { selectedRover: store.rovers[rover].photos });
+        document.getElementById('rover-info').innerHTML = RoverInfo(store.rovers[rover].photos);
         return Promise.resolve(store.rovers[rover].photos);
     }
 
@@ -123,6 +121,7 @@ const getRoverInformation = (rover) => {
             }
             store.rovers[rover].photos = data;
             updateStore(store, { selectedRover: data });
+            document.getElementById('rover-info').innerHTML = RoverInfo(data);
             return data;
         })
         .catch(err => {
@@ -156,7 +155,7 @@ const App = (state) => {
             
             <section id="photos">
                 <div id="rover-photos" align="center">
-                     <h3 class="title">Nasa's Mars Rovers</h3>
+                     <h3 class="title">NASA's Mars Rovers</h3>
                     <p>View each rover's photos by clicking on them.</p>
                     <p>
                         The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
@@ -167,7 +166,7 @@ const App = (state) => {
                     <button id="spirit" onclick="getRoverInformation('spirit')">Spirit</button>
                 </div>
                 <div id="rover-info">
-                    ${selectedRover ? RoverInfo(selectedRover) : '<p>Select a rover to view its information.</p>'}
+                    ${RoverInfo(selectedRover)}
                 </div>
             </section>
         </main>
