@@ -6,14 +6,16 @@ let store = {
 
 // add our markup to the page
 const root = document.getElementById('root')
+const container = document.getElementById('container');
 
 const updateStore = (store, newState) => {
+    console.log('did we update?');
     store = { ...store, ...newState };
     render(root, store);
 }
 
 const render = async (root, state) => {
-    root.innerHTML = App(state)
+    root.innerHTML = App(state);
 }
 
 const Greeting = (name) => {
@@ -55,49 +57,60 @@ const ImageOfTheDay = (apod) => {
     }
 }
 
-const RoverInfo = (roverData) => {
-    if (!roverData || !roverData.img_src || !roverData.rover) {
-        return `<p>No data available for the selected rover.</p>`;
-    }
-    const { img_src, rover } = roverData;
+const roverContainer = async (rover) => {
+    if (rover) {
+        const roverPhotos = await getRoverInformation(rover);
 
-    return (`
-        <div class="rover-info-container">
-            <div class="rover-photo">
-                <img src="${img_src}" alt="Rover Photo" />
-            </div>
-            <div class="rover-manifest">
-                <h2>${rover.name}</h2>
-                <p><strong>Launch Date:</strong> ${rover.launch_date}</p>
-                <p><strong>Landing Date:</strong> ${rover.landing_date}</p>
-                <p><strong>Status:</strong> ${rover.status}</p>
-            </div>
-        </div>
-    `);
-}
+        if (roverPhotos && roverPhotos.length > 0) {
+            // Generate HTML for each photo
+            const htmlOutput = roverPhotos.map(photo => `
+                <div class="rover-card" data-name="${photo.rover_name.toLowerCase().replace(/\s/g, '-')}" data-status="${photo.status.toLowerCase()}">
+                    <div class="rover-img-container">
+                        <img src="${photo.img_src}" alt="Photo taken by ${photo.camera}">
+                    </div>
+                    <header class="rover-header">${photo.rover_name}</header>
+                    <p><span>Launch Date: </span>${photo.launch_date}</p>
+                    <p><span>Landing Date: </span>${photo.landing_date}</p>
+                    <p><span>Status: </span>${photo.status}</p>
+                    <p><span>Earth Date: </span>${photo.earth_date}</p>
+                    <p><span>Camera: </span>${photo.camera}</p>
+                </div>
+            `).join(''); // Join the array of HTML strings into a single string
+
+            // Render the HTML to the DOM
+            document.getElementById('rover-info').innerHTML = htmlOutput;
+
+            return htmlOutput; // Optionally return the HTML string
+        } else {
+            return `<p>No photos available for the selected rover.</p>`;
+        }
+    }
+};
 
 // ------------------------------------------------------  API CALLS
 const getImageOfTheDay = (state) => {
-    let { apod } = state
-    fetch(`/apod`)x
+    return fetch(`/apod`)
         .then(res => res.text())
         .then(text => {
             return JSON.parse(text);
         })
-        .then(apod => updateStore(store, { apod }))
-        .catch(err => console.log('error:', err));
-
-    return apod
+        .then(apod => {
+            updateStore(store, { apod });
+            return apod;
+        })
+        .catch(err => {
+            console.log('error:', err);
+            return null;
+        });
 }
 
 const getRoverInformation = (rover) => {
     if (typeof rover !== 'string') {
         throw new Error('Invalid rover name. Expected a string.');
     }
-    if (store.rovers[rover] && store.rovers[rover].photos) {
-        updateStore(store, { selectedRover: store.rovers[rover].photos });
-        document.getElementById('rover-info').innerHTML = RoverInfo(store.rovers[rover].photos);
-        return Promise.resolve(store.rovers[rover].photos);
+    if (store.rovers[rover] && store.rovers[rover].latest_photos) {
+        updateStore(store, { selectedRover: store.rovers[rover].latest_photos });
+        return Promise.resolve(store.rovers[rover].latest_photos);
     }
 
     return fetch(`/rovers/${rover}`)
@@ -115,31 +128,62 @@ const getRoverInformation = (rover) => {
             }
         })
         .then(data => {
-            console.log('Rover photos data:', data);
+            console.log('Rover latest photos data:', data);
+
+            // Extract the nested fields you need from latest_photos
+            const processedData = data.latest_photos.map(photo => ({
+                id: photo.id,
+                img_src: photo.img_src,
+                earth_date: photo.earth_date,
+                camera: photo.camera.full_name,
+                rover_name: photo.rover.name,
+                landing_date: photo.rover.landing_date,
+                launch_date: photo.rover.launch_date,
+                status: photo.rover.status,
+            }));
+
+            console.log('DATA RETURNED', processedData);
+
             if (!store.rovers[rover]) {
                 store.rovers[rover] = {};
             }
-            store.rovers[rover].photos = data;
-            updateStore(store, { selectedRover: data });
-            document.getElementById('rover-info').innerHTML = RoverInfo(data);
-            return data;
+            store.rovers[rover].latest_photos = processedData;
+
+            // Update the store with the processed data
+            updateStore(store, { selectedRover: processedData });
+
+            // Map through the processed data to perform additional operations
+            const htmlOutput = processedData.map(photo => {
+                return `
+                    <div class="photo-card">
+                        <h3>${photo.rover_name}</h3>
+                        <p>Camera: ${photo.camera}</p>
+                        <p>Earth Date: ${photo.earth_date}</p>
+                        <img src="${photo.img_src}" alt="Photo taken by ${photo.camera}">
+                    </div>
+                `;
+            }).join(''); // Join the array of HTML strings into a single string
+
+            // Optionally, render the HTML to the DOM
+            document.getElementById('rover-container').innerHTML = htmlOutput;
+
+            return processedData;
         })
         .catch(err => {
-            console.error('Error fetching rover photos:', err);
+            console.error('Error fetching rover latest photos:', err);
             return null;
         });
 };
 
-
 // create content
 const App = (state) => {
-    let { rovers, apod, selectedRover } = state;
+    let { apod } = state;
 
     return `
         <header></header>
         <main>
             ${Greeting(store.user.name)}
-            <section>
+          <section>
                 <h3 class="title">Mars Rover Dashboard</h3>
                 <p>Here is an example section.</p>
                 <p>
@@ -154,19 +198,18 @@ const App = (state) => {
             </section>
             
             <section id="photos">
-                <div id="rover-photos" align="center">
+                <div id="rover-container" align="center">
                      <h3 class="title">NASA's Mars Rovers</h3>
                     <p>View each rover's photos by clicking on them.</p>
                     <p>
                         The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
                         images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
                     </p>
-                    <button id="curiosity" onclick="getRoverInformation('curiosity')">Curiosity</button>
-                    <button id="opportunity" onclick="getRoverInformation('opportunity')">Opportunity</button>
-                    <button id="spirit" onclick="getRoverInformation('spirit')">Spirit</button>
+                    <button id="curiosity" onclick="roverContainer('curiosity')">Curiosity</button>
+                    <button id="opportunity" onclick="roverContainer('opportunity')">Opportunity</button>
+                    <button id="spirit" onclick="roverContainer('spirit')">Spirit</button>
                 </div>
                 <div id="rover-info">
-                    ${RoverInfo(selectedRover)}
                 </div>
             </section>
         </main>
@@ -181,30 +224,19 @@ window.addEventListener('load', () => {
     render(root, store)
 })
 
-// Event listeners for rover  buttons
-document.getElementById('curiosity').addEventListener('click', () => {
-    getRoverInformation('curiosity').then(() => renderCuriosityContainer('curiosity'));
-})
-document.getElementById('opportunity').addEventListener('click', () => {
-    getRoverInformation('opportunity').then(() => renderOpportunityContainer('opportunity'));
-})
-document.getElementById('spirit').addEventListener('click', () => {
-    getRoverInformation('spirit').then(() => renderSpiritContainer('spirit'));
-})
+document.getElementById('rover-info').innerHTML = htmlOutput;
+
+// Event listeners for rover buttons
+// document.getElementById('curiosity').addEventListener('click', () => {
+//     getRoverInformation('curiosity').then(roverContainer('curiosity'));
+// })
+// document.getElementById('opportunity').addEventListener('click', () => {
+//     getRoverInformation('opportunity').then(roverContainer('opportunity'));
+// })
+// document.getElementById('spirit').addEventListener('click', () => {
+//     getRoverInformation('spirit').then(roverContainer('spirit'));
+// })
 // Event listener for APOD
 document.getElementById('apod').addEventListener('click', () => {
     getImageOfTheDay(store)
 })
-
-document.addEventListener('DOMContentLoaded', () => {
-    fetch('/apod')
-        .then(res => res.json())
-        .then(data => {
-            if (data.image && !data.image.error) {
-                updateStore(store, { apod: data.image });
-            } else {
-                console.error('Error fetching APOD:', data.image.error);
-            }
-        })
-        .catch(err => console.log('error:', err));
-});
