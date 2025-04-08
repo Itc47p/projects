@@ -34,13 +34,12 @@ const Greeting = (name) => {
 
 // # region Pure functions
 // Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (apod) => 
-    //If image does not already exist, or it is not from today -- request it again
-    const today = new Date()
-    const photodate = new Date(apod.date)
-
-    if (!apod || apod.date === today) {
-        getImageOfTheDay(store)
+const ImageOfTheDay = (state) => 
+    if(state.isLoading) {
+    return `<div>Loading...</div>`;
+ }
+    if(state.apod === null) {
+        return `<div>No image of the day available</div>`
     }
 
     // check if the photo of the day is actually type video!
@@ -97,15 +96,17 @@ const roverContainer = async (rover) => {
    
 
 const getImageOfTheDay = (state) => {
-     if (apod === null && !isLoading) {
-        store.isLoading = true;
-          return fetch(`/apod`)
+    updateStore(state, { isLoading: true})
+     // if (apod === null && !isLoading) {
+     //    store.isLoading = true;
+    // hasError -> store
+        fetch(`/apod`)
         .then(res => res.text())
         .then(text => {
             return JSON.parse(text);
         })
         .then(apod => {
-            updateStore(store, { apod });
+            updateStore(store, { apod, isLoading: false });
             return apod;
         })
         .catch(err => {
@@ -189,8 +190,14 @@ const getRoverInformation = (rover) => {
 
 // create content
 const App = (state) => {
-    let { apod } = state;
+    let { apod, isLoading } = state;
 
+    if(apod === null && !isLoading) {
+        getImageOfTheDay(state);
+    }
+    
+    let imageOfTheDayHtml = ImageOfTheDay(state);
+    
     return `
         <header></header>
         <main>
@@ -206,7 +213,7 @@ const App = (state) => {
                     explanation are returned. These keywords could be used as auto-generated hashtags for twitter or instagram feeds;
                     but generally help with discoverability of relevant imagery.
                 </p>
-                ${ImageOfTheDay(apod)}
+                ${imageOfTheDayHtml}
             </section>
             
             <section id="photos">
@@ -228,6 +235,7 @@ const App = (state) => {
         <footer>
         </footer>
     `;
+    
 };
 
 
