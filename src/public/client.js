@@ -1,7 +1,9 @@
 let store = {
     user: { name: "Chris" },
-    apod: '',
+    apod: null,
     rovers: ['Curiosity', 'Opportunity', 'Spirit'],
+    // isLoading: false
+    
 }
 
 // add our markup to the page
@@ -32,8 +34,7 @@ const Greeting = (name) => {
 
 // # region Pure functions
 // Example of a pure function that renders infomation requested from the backend
-const ImageOfTheDay = (apod) => {
-
+const ImageOfTheDay = (apod) => 
     //If image does not already exist, or it is not from today -- request it again
     const today = new Date()
     const photodate = new Date(apod.date)
@@ -88,8 +89,17 @@ const roverContainer = async (rover) => {
 };
 
 // ------------------------------------------------------  API CALLS
+
+// causing a loop because of rednder in update store
+// isLoadingApod: false
+// if im not ^ set indicator to true -> make call -> when loading finishes set store w data and set isLoading back
+// apod should start as null - in store now
+   
+
 const getImageOfTheDay = (state) => {
-    return fetch(`/apod`)
+     if (apod === null && !isLoading) {
+        store.isLoading = true;
+          return fetch(`/apod`)
         .then(res => res.text())
         .then(text => {
             return JSON.parse(text);
@@ -102,6 +112,8 @@ const getImageOfTheDay = (state) => {
             console.log('error:', err);
             return null;
         });
+     }
+    
 }
 
 const getRoverInformation = (rover) => {
