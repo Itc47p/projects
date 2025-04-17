@@ -16,11 +16,11 @@ app.use('/', express.static(path.join(__dirname, '../public')))
 
 require('dotenv').config();
 
-const base = 'https://api.nasa.gov';
+const apiUrlBase = 'https://api.nasa.gov';
 
 app.get('/apod', async (req, res) => {
     try {
-        let image = await fetch(`${base}/planetary/apod?api_key=${API_KEY}`)
+        let image = await fetch(`${apiUrlBase}/planetary/apod?api_key=${API_KEY}`)
             .then(res => res.json());
         res.send({ image });
     } catch (err) {
@@ -29,66 +29,24 @@ app.get('/apod', async (req, res) => {
     }
 });
 
-// TODO: get rover photos
-app.get('/mars-photos', async (req, res) => {
-    const rover = req.query.rover;
-    const earth_date = new Date().toISOString().split('T')[0];
-    console.log('EARTH DATE:', earth_date);
-    const apiUrl = `https://api.nasa.gov/mars-photos/api/v1/rovers/${rover}/photos?earth_date=${earth_date}&page=2&api_key=${API_KEY}`;
-    console.log('Fetching rover photos from:', apiUrl);
-
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('DATA RESPONSE:', data);
-        const imgSrc = data.photos.length > 0 ? data.photos[0].img_src : null;
-        res.send({ imgSrc });
-    } catch (err) {
-        console.log('get photo error:', err);
-        res.status(500).send('Error fetching rover photos');
-    }
-});
- 
-
-
-app.get('/manifests/:rover', async (req, res) => {
-    const rover = req.params.rover;
-    const apiUrl = `https://api.nasa.gov/mars-photos/api/v1/manifests/${rover}?api_key=${API_KEY}`;
-    console.log('Fetching manifest data from:', apiUrl);
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('Received data:', data); // Log the received data
-        const launch_date = data.photo_manifest.launch_date;
-        const landing_date = data.photo_manifest.landing_date;
-        const status = data.photo_manifest.status;
-        res.send({ rover, launch_date, landing_date, status });
-    } catch (err) {
-        console.log('get manifest error:', err);
-        res.status(500).send('Error fetching rover data');
-    }
-});
-
-app.get('/insight_weather', async (req, res) => {
-    try {
-        const response = await fetch(`${base}/insight_weather/?${process.env.API_KEY}&feedtype=json&ver=1.0`);
-        const data = await response.json();
-        res.send({ weather: data });
-    } catch (err) {
-        console.log('error:', err);
-        res.status(500).send('Error fetching weather data');
-    }
-});
-
-
-// https://api.nasa.gov/mars-photos/api/v1/manifests/curiosity?api_key=rNX5HjiNAau4P2yU0KQyGnHF1nqF7DZc2rtgQ1Y9
-
 // https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?earth_date=2015-6-3&api_key=gNxAEMgoTXepdJgTthIoeAjbnnb7qGG4aAjC0A0I
 
-app.listen(port, () => console.log(`Mars Dasboard app listening on port ${port}!`))
+app.get('/rovers/:name', async (req, res) => {
+    try {
+        let data = await fetch(`${apiUrlBase}/mars-photos/api/v1/rovers/${req.params.name}/latest_photos?api_key=${API_KEY}`)
+            .then(res => res.json());
+
+        const limitedData = data.latest_photos ? data.latest_photos.slice(0, 5) : [];
+
+        console.log('Limited data for rover:', req.params.name, limitedData);
+
+        res.send({ data: limitedData });
+    } catch (err) {
+        console.error('Error fetching rover data:', err); 
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+
+app.listen(port, () => console.log(`Dasboard listening on port ${port}`))
