@@ -67,21 +67,21 @@ const Greeting = (name) => {
 
 const roverDiv = async (rover) => {
     const roverResponse = await getRoverResponse(rover);
+    console.log(roverResponse, 'ROVER RESPONSE:');
     console.log('roverDiv() called with rover:', rover);
-        if (roverReponse && roverReponse.length > 0) {
-            console.log('Rover response:', roverReponse);
-            // Generate HTML for each photo
-            const htmlOutput = roverReponse.map(data => `
-                <div class="rover-card" data-name="${data.rover_name}">
-                    <img src="${data.img_src}" alt="Photo taken by ${data.camera}">
-                    <header class="rover-header">${data.rover.name}</header>
-                    <p><span>Launch Date: </span>${data.rover.launch_date}</p>
-                    <p><span>Landing Date: </span>${data.landing_date}</p>
-                    <p><span>Status: </span>${data.rover.status}</p>
-                </div>
-            `).join(''); // Join the array of HTML strings into a single string
 
-            // Render the HTML to the DOM
+    if (roverResponse && roverResponse.length > 0) {
+        console.log('Rover response:', roverResponse);
+        const htmlOutput = roverResponse.map(data => `
+            <div class="rover-card" data-name="${data.rover.name}">
+                <img src="${data.img_src}" alt="Photo taken by ${data.camera.full_name}">
+                <header class="rover-header">${data.rover.name}</header>
+                <p><span>Launch Date: </span>${data.rover.launch_date}</p>
+                <p><span>Landing Date: </span>${data.rover.landing_date}</p>
+                <p><span>Status: </span>${data.rover.status}</p>
+            </div>
+        `).join('');
+
            const roverDivInfo = document.getElementById('rover-info');
            if(roverDivInfo) {
                 roverDivInfo.innerHTML = htmlOutput;
@@ -146,9 +146,7 @@ const getRoverResponse = (rover) => {
         });
 };
 
-// create content
 const App = (state) => {
-    // Return the HTML structure
     const appHTML = `
         <header></header>
         <main>
@@ -172,14 +170,6 @@ const App = (state) => {
         <footer>
         </footer>
     `;
-
-    // Render the HTML to the DOM
-    document.body.innerHTML = appHTML;
-
-    // Add event listeners to the buttons
-    // document.getElementById('curiosity').addEventListener('click', () => roverDiv('curiosity'));
-    // document.getElementById('opportunity').addEventListener('click', () => roverDiv('opportunity'));
-    // document.getElementById('spirit').addEventListener('click', () => roverDiv('spirit'));
 
     return appHTML;
 };;
