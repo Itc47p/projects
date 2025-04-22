@@ -66,6 +66,7 @@ const Greeting = (name) => {
 // }
 
 const roverDiv = async (rover) => {
+    const roverResponse = await getRoverResponse(rover);
     console.log('roverDiv() called with rover:', rover);
         if (roverReponse && roverReponse.length > 0) {
             console.log('Rover response:', roverReponse);
