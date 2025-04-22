@@ -164,7 +164,7 @@ const App = (state) => {
                     <button id="curiosity">Curiosity</button>
                     <button id="opportunity">Opportunity</button>
                     <button id="spirit">Spirit</button>
-                    <div class="rover-info"></div>
+                    <div id="rover-info"></div>
                 </div>
             </section>
         </main>
