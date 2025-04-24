@@ -5,9 +5,20 @@ body {
   flex-direction: column;
   font-family: Arial;
   min-height: 100vh;
+  background-color: cornflowerblue;
 }
 
 header {
+}
+
+.rover-button {
+    background-color: blue;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 5px; 
+    font-size: 16px;
 }
 
 main {
@@ -16,20 +27,10 @@ main {
 }
 
 footer {
-  /* footer styles */
+background-color: blue;
 }
-
-#Manifest {
-  text-align: center;
-}
-
 .title {
   text-align: center;
-}
-
-/* -------------------  TABLET  --------------------- */
-@media (min-width: 768px) {
-  /* use mobile */
 }
 
 /* -------------------  DESKTOP  -------------------- */
@@ -42,4 +43,34 @@ footer {
 
 @media (min-width: 1824px) {
   /* use mobile */
+}
+#rover-container {
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  #rover-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 20px;
+      box-sizing: border-box;
+  }
+
+  #rover-info {
+      width: 100%;
+      text-align: center;
+  }
+
+  button {
+      margin: 10px 0;
+}
+  #rover-image {
+      width: 100%;
+      height: auto;
+      max-width: 600px;
+  }
 }
