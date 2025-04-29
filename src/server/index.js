@@ -23,12 +23,9 @@ app.get('/apod', async (req, res) => {
             .then(res => res.json());
         res.send({ image });
     } catch (err) {
-        console.log('get apod error:', err);
         res.status(500).send('Internal Server Error');
     }
 });
-
-// https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?earth_date=2015-6-3&api_key=gNxAEMgoTXepdJgTthIoeAjbnnb7qGG4aAjC0A0I
 
 app.get('/rovers/:name', async (req, res) => {
     try {
