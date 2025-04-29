@@ -7,11 +7,9 @@ let store = {
 };
 let htmlOutput = '';
 
-// add our markup to the page
 const root = document.getElementById('root')
 
 const updateStore = (newState) => {
-    console.log('updateStore()', newState);
     Object.assign(store, newState);
     render(root, store);
 };
@@ -37,12 +35,10 @@ const Greeting = (name) => {
 }
 
 const roverDiv = async (rover) => {
-    console.log('roverDiv() called with rover:', rover);
-
     // Update the selected rover in the store
     updateStore({ selectedRover: rover });
 
-    // Get the rover data (either from cache or API)
+    // Get the rover data, conditionally
     const roverResponse = await getRoverResponse(rover);
 
     if (!roverResponse || roverResponse.length === 0) {
@@ -50,7 +46,7 @@ const roverDiv = async (rover) => {
         return `<p>No photos available for the selected rover.</p>`;
     }
 
-    // Generate HTML for the rover data
+    // Generate HTML
     const generateRoverCard = (data) => {
         const roverName = data.rover?.name || 'Unknown Rover';
         const imgSrc = data.img_src || 'placeholder.jpg';
@@ -72,7 +68,7 @@ const roverDiv = async (rover) => {
 
     const htmlOutput = roverResponse.map(generateRoverCard).join('');
 
-    // Insert the HTML into the DOM
+    // Insert the HTML
     const roverContainer = document.getElementById('rover-info');
     if (roverContainer) {
         roverContainer.innerHTML = htmlOutput;
@@ -85,31 +81,9 @@ const roverDiv = async (rover) => {
 
 // ------------------------------------------------------  API CALLS
 
-// const getImageOfTheDay = (state) => {
-//     updateStore(state, { isLoading: true });
-
-//     fetch(`/apod`)
-//         .then(res => {
-//             if (!res.ok) {
-//                 throw new Error(`HTTP error! status: ${res.status}`);
-//             }
-//             return res.json(); // Parse JSON directly
-//         })
-//         .then(apod => {
-//             updateStore(store, { apod, isLoading: false });
-//         })
-//         .catch(err => {
-//             console.error('Error fetching Image of the Day:', err);
-//             updateStore(store, { isLoading: false });
-//         });
-// };
-
-
 const getRoverResponse = (rover) => {
-    console.log('getRoverResponse() called with rover:', rover);
 
     if (store.roverData[rover] && store.roverData[rover].length > 0) {
-        console.log(`Using cached data for rover: ${rover}`);
         return Promise.resolve(store.roverData[rover]);
     }
 
@@ -121,10 +95,9 @@ const getRoverResponse = (rover) => {
             return res.json();
         })
         .then(data => {
-            // Cache the data in the store
+            // Cache the data   
             const roverPhotos = data.data || [];
             updateStore({ roverData: { ...store.roverData, [rover]: roverPhotos } });
-            console.log(`Data for rover ${rover} cached in store:`, store.roverData[rover]);
             return roverPhotos;
         })
         .catch(err => {
@@ -160,10 +133,14 @@ const App = (state) => {
 
     return appHTML;
 };;
+// ------------------------------------------------------  EVENT LISTENERS
 
-// Attach event listeners after rendering
+window.addEventListener('load', () => {
+    render(root, store);
+    attachRoverButtonListeners();
+});
+
 const attachRoverButtonListeners = () => {
-    console.log('attachRoverButtonListeners() called');
     const curiosityButton = document.getElementById('curiosity');
     const opportunityButton = document.getElementById('opportunity');
     const spiritButton = document.getElementById('spirit');
@@ -177,9 +154,3 @@ const attachRoverButtonListeners = () => {
     opportunityButton.addEventListener('click', () => roverDiv('Opportunity'));
     spiritButton.addEventListener('click', () => roverDiv('Spirit'));
 };
-
-// ------------------------------------------------------  EVENT LISTENERS
-window.addEventListener('load', () => {
-    render(root, store);
-    attachRoverButtonListeners();
-});
