@@ -1,20 +1,19 @@
 let store = {
     user: { name: "Chris" },
-    apod: null,
     rovers: ['Curiosity', 'Opportunity', 'Spirit'],
-    isLoading: false,
-    hasImageoFTheDay: false
-}
+    selectedRover: null,
+    roverData: {},
+    isLoading: false
+};
 let htmlOutput = '';
 
 // add our markup to the page
 const root = document.getElementById('root')
-// const container = document.getElementById('container');
 
 const updateStore = (newState) => {
     console.log('updateStore()', newState);
-    Object.assign(store, newState); // Update the global store
-    render(root, store); // Re-render the app
+    Object.assign(store, newState);
+    render(root, store);
 };
 
 const render = async (root, state) => {
@@ -24,8 +23,6 @@ const render = async (root, state) => {
     }
     root.innerHTML = App(state);
     attachRoverButtonListeners();
-    root.roverDiv = await roverDiv(state.selectedRover);
-    // root.imageOfTheDay = ImageOfTheDay(state);
 };
 
 const Greeting = (name) => {
@@ -34,64 +31,56 @@ const Greeting = (name) => {
             <h1>Welcome, ${name}!</h1>
         `
     }
-
     return `
         <h1>Hello!</h1>
     `
 }
 
-// # region Pure functions
-// Example of a pure function that renders infomation requested from the backend
-// const ImageOfTheDay = (state) => {
-//     const { apod, isLoading } = state;
-//     if (isLoading) {
-//         return `<div>Loading...</div>`;
-//     }
-//     if (apod === null) {
-//         return `<div>No image of the day available</div>`
-//     }
-//     // check if the photo of the day is actually type video!
-//     if (apod.media_type === "video") {
-//         return (`
-//                 <p>See today's featured video <a href="${apod.url}">here</a></p>
-//                 <p>${apod.title}</p>
-//                 <p>${apod.explanation}</p>
-//             `)
-//     } else {
-//         return (`
-//                 <img src="${apod.image.url}" height="350px" width="100%" />
-//                 <p>${apod.image.explanation}</p>
-//             `)
-//     }
-// }
-
 const roverDiv = async (rover) => {
-    const roverResponse = await getRoverResponse(rover);
-    console.log(roverResponse, 'ROVER RESPONSE:');
     console.log('roverDiv() called with rover:', rover);
 
-    if (roverResponse && roverResponse.length > 0) {
-        console.log('Rover response:', roverResponse);
-        const htmlOutput = roverResponse.map(data => `
-            <div class="rover-card" data-name="${data.rover.name}">
-                <img src="${data.img_src}" alt="Photo taken by ${data.camera.full_name}">
-                <header class="rover-header">${data.rover.name}</header>
-                <p><span>Launch Date: </span>${data.rover.launch_date}</p>
-                <p><span>Landing Date: </span>${data.rover.landing_date}</p>
-                <p><span>Status: </span>${data.rover.status}</p>
-            </div>
-        `).join('');
+    // Update the selected rover in the store
+    updateStore({ selectedRover: rover });
 
-           const roverDivInfo = document.getElementById('rover-info');
-           if(roverDivInfo) {
-                roverDivInfo.innerHTML = htmlOutput;
-           } else {
-                console.error('rover-info element not found in the DOM!');
-            }
-            return htmlOutput; 
-        } else {
-            return `<p>No photos available for the selected rover.</p>`;
-        }
+    // Get the rover data (either from cache or API)
+    const roverResponse = await getRoverResponse(rover);
+
+    if (!roverResponse || roverResponse.length === 0) {
+        console.warn(`No data found for rover: ${rover}`);
+        return `<p>No photos available for the selected rover.</p>`;
+    }
+
+    // Generate HTML for the rover data
+    const generateRoverCard = (data) => {
+        const roverName = data.rover?.name || 'Unknown Rover';
+        const imgSrc = data.img_src || 'placeholder.jpg';
+        const cameraName = data.camera?.full_name || 'Unknown Camera';
+        const launchDate = data.rover?.launch_date || 'N/A';
+        const landingDate = data.rover?.landing_date || 'N/A';
+        const status = data.rover?.status || 'Unknown';
+
+        return `
+            <div class="rover-card" data-name="${roverName}">
+                <img src="${imgSrc}" alt="Photo taken by ${cameraName}">
+                <header class="rover-header">${roverName}</header>
+                <p><span>Launch Date: </span>${launchDate}</p>
+                <p><span>Landing Date: </span>${landingDate}</p>
+                <p><span>Status: </span>${status}</p>
+            </div>
+        `;
+    };
+
+    const htmlOutput = roverResponse.map(generateRoverCard).join('');
+
+    // Insert the HTML into the DOM
+    const roverContainer = document.getElementById('rover-info');
+    if (roverContainer) {
+        roverContainer.innerHTML = htmlOutput;
+    } else {
+        console.error('Rover container not found in the DOM.');
+    }
+
+    return htmlOutput;
 };
 
 // ------------------------------------------------------  API CALLS
@@ -118,12 +107,10 @@ const roverDiv = async (rover) => {
 
 const getRoverResponse = (rover) => {
     console.log('getRoverResponse() called with rover:', rover);
-    if (typeof rover !== 'string') {
-        throw new Error('Invalid rover name. Expected a string.');
-    }
-    if (store.rovers[rover] && store.rovers[rover].latest_photos) {
-        updateStore(store, { selectedRover: store.rovers[rover].latest_photos });
-        return Promise.resolve(store.rovers[rover].latest_photos);
+
+    if (store.roverData[rover] && store.roverData[rover].length > 0) {
+        console.log(`Using cached data for rover: ${rover}`);
+        return Promise.resolve(store.roverData[rover]);
     }
 
     return fetch(`/rovers/${rover}`)
@@ -131,18 +118,18 @@ const getRoverResponse = (rover) => {
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
-            const contentType = res.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return res.json();
-            } else {
-                return res.text().then(text => {
-                    throw new Error(`Expected JSON, got: ${text}`);
-                });
-            }
+            return res.json();
+        })
+        .then(data => {
+            // Cache the data in the store
+            const roverPhotos = data.data || [];
+            updateStore({ roverData: { ...store.roverData, [rover]: roverPhotos } });
+            console.log(`Data for rover ${rover} cached in store:`, store.roverData[rover]);
+            return roverPhotos;
         })
         .catch(err => {
             console.error('Error fetching rover latest photos:', err);
-            updateStore(store, { isLoading: false });
+            return [];
         });
 };
 
@@ -160,9 +147,9 @@ const App = (state) => {
                         The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
                         images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
                     </p>
-                    <button id="curiosity">Curiosity</button>
-                    <button id="opportunity">Opportunity</button>
-                    <button id="spirit">Spirit</button>
+                    <button id="curiosity" class="rover-button">Curiosity</button>
+                    <button id="opportunity" class="rover-button">Opportunity</button>
+                    <button id="spirit" class="rover-button">Spirit</button>
                     <div id="rover-info"></div>
                 </div>
             </section>
@@ -193,12 +180,6 @@ const attachRoverButtonListeners = () => {
 
 // ------------------------------------------------------  EVENT LISTENERS
 window.addEventListener('load', () => {
-    // getImageOfTheDay(store);
     render(root, store);
     attachRoverButtonListeners();
 });
-
-// Event listener for APOD
-// document.getElementById('apod').addEventListener('click', () => {
-//     getImageOfTheDay(store)
-// })
