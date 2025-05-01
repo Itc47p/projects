@@ -2,12 +2,72 @@
 
 body {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   font-family: Arial;
   min-height: 100vh;
+  background-color: #8B5643;
 }
 
-header {
+div.greeting {
+  background-image: url('Curiosity.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 100vh;
+  margin: 0;
+  align-content: center;
+  color: #4caf50;
+  text-align: center;
+  margin-top: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+button.rover-button {
+  background-color: ;
+  color: #4caf50;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+button.rover-button:hover {
+  background-color: #4caf50;
+  color: white;
+}
+
+.rover-card {
+  display: inline-block;
+  text-align: center;
+  margin: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 300px;
+}
+
+.rover-photo {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+figcaption {
+  font-size: 1rem;
+  color: #555;
+  padding: 10px;
+  background-color: #f9f9f9;
+}
+
+div.app-greeting {
+  align-content: center;
+}
+
+main {
+  justify-content: center;
+  font-family: 'Arial', sans-serif;
+  color: white;
 }
 
 main {
@@ -16,20 +76,11 @@ main {
 }
 
 footer {
-  /* footer styles */
-}
-
-#Manifest {
-  text-align: center;
+  background-color: brown;
 }
 
 .title {
   text-align: center;
-}
-
-/* -------------------  TABLET  --------------------- */
-@media (min-width: 768px) {
-  /* use mobile */
 }
 
 /* -------------------  DESKTOP  -------------------- */
@@ -42,4 +93,36 @@ footer {
 
 @media (min-width: 1824px) {
   /* use mobile */
+}
+
+#rover-container {
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  #rover-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #rover-info {
+    width: 100%;
+    text-align: center;
+  }
+
+  button {
+    margin: 10px 0;
+  }
+
+  #rover-image {
+    width: 100%;
+    height: auto;
+    max-width: 600px;
+  }
 }
