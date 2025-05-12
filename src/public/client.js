@@ -10,13 +10,10 @@ let store = Map({
     roverManifestData: Map()
 });
 
-console.log('Store:', store.toJS());
-
 const root = document.getElementById('root');
 
-// Update the store immutably
 const updateStore = (newState) => {
-    store = store.merge(newState); // Merge new state into the existing store
+    store = store.merge(newState);
     render(root, store);
 };
 
@@ -32,7 +29,7 @@ const render = async (root, state) => {
 const Greeting = (name) => {
     if (name) {
         return `
-            <h1>Welcome, ${name}!</h1>
+            <h1>Welcome,${name}!</h1>
         `;
     }
     return `
@@ -44,15 +41,18 @@ const roverDiv = async (rover) => {
     // Update the selected rover in the store
     updateStore({ selectedRover: rover });
 
-    // Get the rover data, conditionally
     const roverResponse = await getRoverResponse(rover);
+    const manifestData = await getRoverManifest(rover);
+    if (!manifestData || manifestData.length === 0) {
+        console.warn(`No manifest data found for rover: ${rover}`);
+    }
+
 
     if (!roverResponse || roverResponse.length === 0) {
         console.warn(`No data found for rover: ${rover}`);
         return `<p>No photos available for the selected rover.</p>`;
     }
 
-    // Generate HTML
     const generateRoverCard = (data) => {
         const roverName = data.rover?.name || 'Unknown Rover';
         const imgSrc = data.img_src || 'placeholder.jpg';
@@ -60,21 +60,22 @@ const roverDiv = async (rover) => {
         const launchDate = data.rover?.launch_date || 'N/A';
         const landingDate = data.rover?.landing_date || 'N/A';
         const status = data.rover?.status || 'Unknown';
+        const latestPhotoDt = manifestData || 'N/A';
 
         return `
-            <figure class="rover-card" data-name="${roverName}">
+            <figure class="rover-card" data-name="<strong>${roverName}/strong>">
                 <img src="${imgSrc}" alt="Photo taken by ${cameraName}">
                 <header class="rover-header">${roverName}</header>
-                <figcaption>Launch Date: ${launchDate}</figcaption>
-                <figcaption>Landing Date: ${landingDate}</figcaption>
-                <figcaption>Status: ${status}</figcaption>
+                <figcaption><strong>Launch Date:</strong> ${launchDate}</figcaption>
+                <figcaption><strong>Landing Date:</strong> ${landingDate}</figcaption>
+                <figcaption><strong>Latest Photo Date:</strong> ${latestPhotoDt}</figcaption>
+                <figcaption><strong>Status:</strong> ${status}</figcaption>
             </figure>
         `;
     };
 
     const htmlOutput = roverResponse.map(generateRoverCard).join('');
 
-    // Insert the HTML
     const roverContainer = document.getElementById('rover-info');
     if (roverContainer) {
         roverContainer.innerHTML = htmlOutput;
@@ -84,35 +85,6 @@ const roverDiv = async (rover) => {
 
     return htmlOutput;
 };
-
- const  generateRoverManifest = async (rover) => {
-    updateStore({ selectedRover: rover });
-    const response = await getRoverManifest(rover);
-    if(!response || response.length === 0) {
-        console.warn(`No manifest data found for rover: ${rover}`);
-        return `<p>No manifest available for the selected rover.</p>`;
-    }
-    const generateLatestPhoto = (data) => {
-        const latestPhotoDat = data.max_date ?? 'N/A';
-
-        return `
-        <div class="rover-manifest">
-        <h3>Latest Photo Date: ${latestPhotoDat}</h3>
-        </div>
-        `;
-    };
-    const htmlOutput = response.map(generateLatestPhoto).join('');
-    const roverContainer = document.getElementById('rover-manifest');
-    if (roverContainer) {
-        roverContainer.innerHTML = htmlOutput;
-    } else {
-        console.error('Rover manifest container not found in the DOM.');
-    }
-    return htmlOutput;
-
-}
-
-
     // ------------------------------------------------------  API CALLS
 
     const getRoverResponse = (rover) => {
@@ -130,7 +102,6 @@ const roverDiv = async (rover) => {
                 return res.json();
             })
             .then(data => {
-                console.log('Fetched rover data:', data);
                 // Cache the data
                 const roverPhotos = data.data || [];
                 updateStore({ roverData: store.get('roverData').set(rover, roverPhotos) });
@@ -145,10 +116,10 @@ const roverDiv = async (rover) => {
     const getRoverManifest = (rover) => {
         const manifestData = store.getIn(['roverManifestData', rover]);
         if (manifestData && manifestData.length > 0) {
-            return Promise.resolve(manifestData); // Return cached data if available
+            return Promise.resolve(manifestData);
         }
 
-        return fetch(`rovers/manifest/${rover}`)
+        return fetch(`/manifest/${rover}`)
             .then(res => {
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
@@ -156,8 +127,7 @@ const roverDiv = async (rover) => {
                 return res.json();
             })
             .then(data => {
-                console.log('Fetched rover manifest data:', data);
-                const roverManifest = data.data || [];
+                const roverManifest = data.latestPhotoDate || 'N/A';
                 updateStore({
                     roverManifestData: store.get('roverManifestData').set(rover, roverManifest)
                 });
@@ -170,29 +140,24 @@ const roverDiv = async (rover) => {
     };
 
 
-    const App = (state) => {
-        const userName = state.getIn(['user', 'name']);
+    const App = () => {
         const appHTML = `
-        <header></header>
+        <header id="app-header"></header>
         <main>
-            <div class="app-greeting">${Greeting(userName)}</div>
-                <h3 class="title">Mars Rover Dashboard</h3>
-            <section id="photos">
-                <div id="rover-container" align="center">
+                <div id="rover-container">
                     <h3 class="title">NASA's Mars Rovers</h3>
                     <p>View each rover's photos by clicking on them.</p>
-                    <p>
-                        The Mars Rover Photos API provides access to images taken by the Mars rovers. The API allows users to retrieve
-                        images from specific dates, cameras, and rovers. It also provides information about the rovers and their missions.
-                    </p>
+                   <div class="description">
+                      🚀 Step into the boots of a Martian explorer with our interactive Mars Rover Dashboard.
+                      Choose between 🤖 Curiosity, 🔧 Spirit, or ⚙ Opportunity and instantly uncover a hands-on glimpse into NASAs robotic pioneers—no space suit required 👨‍🚀.
+                   </div>
                     <button id="curiosity" class="rover-button">Curiosity</button>
                     <button id="opportunity" class="rover-button">Opportunity</button>
                     <button id="spirit" class="rover-button">Spirit</button>
                     <div id="rover-info"></div>
-                    <button id="manifest-button" class="rover-button">Latest Photo Date?</button>
-                    <div id="rover-manifest"></div>
+                    <button id="up" class="up-button">🔝</button>
                 </div>
-            </section>
+            </div>  
         </main>
         <footer>
         </footer>
@@ -206,28 +171,24 @@ const roverDiv = async (rover) => {
     window.addEventListener('load', () => {
         render(root, store);
         attachRoverButtonListeners();
+        attachBackToTopListener();
+
     });
 
     const attachRoverButtonListeners = () => {
         const curiosityButton = document.getElementById('curiosity');
         const opportunityButton = document.getElementById('opportunity');
         const spiritButton = document.getElementById('spirit');
-        const manifestButton = document.getElementById('manifest-button');
-
-        if (!curiosityButton || !opportunityButton || !spiritButton) {
-            console.error('Rover buttons not found in the DOM!');
-            return;
-        }
 
         curiosityButton.addEventListener('click', () => roverDiv('Curiosity'));
         opportunityButton.addEventListener('click', () => roverDiv('Opportunity'));
         spiritButton.addEventListener('click', () => roverDiv('Spirit'));
-        manifestButton.addEventListener('click', () => {
-            const selectedRover = store.get('selectedRover');
-            if (selectedRover) {
-                generateRoverManifest(selectedRover);
-            } else {
-                console.warn('No rover selected for manifest generation.');
-            }
+    };
+
+    const attachBackToTopListener = () => {
+        const upButton = document.getElementById('up');
+        upButton.addEventListener('click', () => {
+            window.scrollY = 0;
+            // window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     };
